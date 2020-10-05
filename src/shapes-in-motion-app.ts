@@ -68,7 +68,7 @@ export class ShapesInMotionApp extends LitElement {
   squares: Square[] = []; 
 
   rotation: number = 0;
-  intervalId :NodeJS.Timeout;
+  intervalId!:NodeJS.Timeout;
     
   render() {
     return html`
