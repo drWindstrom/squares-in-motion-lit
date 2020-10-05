@@ -1,16 +1,16 @@
-import {MyElement} from '../my-element.js';
+import {ShapesInMotionApp} from '../shapes-in-motion-app.js';
 import {fixture, html} from '@open-wc/testing';
 
 const assert = chai.assert;
 
-suite('my-element', () => {
+suite('shapes-in-motion-app', () => {
   test('is defined', () => {
-    const el = document.createElement('my-element');
-    assert.instanceOf(el, MyElement);
+    const el = document.createElement('shapes-in-motion-app');
+    assert.instanceOf(el, ShapesInMotionApp);
   });
 
   test('renders with default values', async () => {
-    const el = await fixture(html`<my-element></my-element>`);
+    const el = await fixture(html`<shapes-in-motion-app></shapes-in-motion-app>`);
     assert.shadowDom.equal(
       el,
       `
@@ -22,7 +22,7 @@ suite('my-element', () => {
   });
 
   test('renders with a set name', async () => {
-    const el = await fixture(html`<my-element name="Test"></my-element>`);
+    const el = await fixture(html`<shapes-in-motion-app name="Test"></shapes-in-motion-app>`);
     assert.shadowDom.equal(
       el,
       `
@@ -34,7 +34,7 @@ suite('my-element', () => {
   });
 
   test('handles a click', async () => {
-    const el = (await fixture(html`<my-element></my-element>`)) as MyElement;
+    const el = (await fixture(html`<shapes-in-motion-app></shapes-in-motion-app>`)) as ShapesInMotionApp;
     const button = el.shadowRoot!.querySelector('button')!;
     button.click();
     await el.updateComplete;
