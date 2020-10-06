@@ -1,137 +1,138 @@
 import {LitElement, html, customElement, property, css} from 'lit-element';
 import './shapes-canvas';
-import { Square } from './interfaces/square-interface';
-
+import {Square} from './interfaces/square-interface';
 
 @customElement('shapes-in-motion-app')
 export class ShapesInMotionApp extends LitElement {
   static styles = css`
     :host {
-      display: block;
-      border: solid 1px gray;
-      padding: 4px;
-      
-    }
-    
-    #canvas-container {
-      border-style: solid;
-      border-width: 1px;
-      padding: 0px;
-      margin: 4px;
-      background-color: rgb(245, 245, 245);
       width: 100%;
-      height: 99vh;
-      overflow: auto;
-    }
-
-    .flex-column {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .flex-row {
+      height: 100vh;
       display: flex;
       flex-direction: row;
     }
 
     #input-parameters {
-      width: 160px;
+      width: 140px;
+      margin-left: 10px;
+      display: flex;
+      flex-direction: column;
     }
 
-    input {
-      margin-left: 5px;
-      margin-right: 10px;
+    #canvas-container {
+      overflow: scroll;
+      flex: 1;
     }
 
     label {
       margin-top: 10px;
-      margin-left: 5px;
     }
 
     button {
       margin-top: 15px;
-      width: 60px;
-    }
-
-    #buttons {
-      align-self: center;
     }
   `;
-  
+
   @property({type: Number})
   canvasWidth = 0;
 
   @property({type: Number})
   canvasHeight = 0;
 
-  @property({ type: Array })
-  squares: Square[] = []; 
+  @property({type: Number})
+  measuredFps = 0;
 
-  rotation: number = 0;
-  intervalId!:NodeJS.Timeout;
-    
+  @property({type: Array})
+  squares: Square[] = [];
+
+  private intervalId: NodeJS.Timeout | undefined;
+  private sideLength: number = 0;
+  private numberOfSquares: number = 0;
+  private numberSpinning: number = 0;
+  private reqFps: number = 0;
+  private lastT: number = 0;
+  private _distance = () => this.sideLength * 1.75;
+
   render() {
     return html`
-      <div class="flex-row">
-        <div class="flex-column" id="input-parameters">
-          <label for="side-length">Side length:</label>
-          <input type="number" id="side-length" name="side-length">
-          <label for="num-squares">Number of squares:</label>
-          <input type="number" id="num-squares" name="num-squares">
-          <label for="num-spinning">Number spinning:</label>
-          <input type="number" id="num-spinning" name="num-spinning">
-          <div id="buttons">
-            <button @click=${this._startButton}>Start</button>
-            <button @click=${this._stopButton}>Stop</button>
-          </div> 
+      <div id="input-parameters">
+        <label for="side-length">Side length:</label>
+        <input type="number" id="side-length" name="side-length" value="40"/>
+        <label for="num-squares">Number of squares:</label>
+        <input type="number" id="num-squares" name="num-squares" value="100"/>
+        <label for="num-spinning">Number spinning:</label>
+        <input type="number" id="num-spinning" name="num-spinning" value="10"/>
+        <label for="req-fps">Frames per sec:</label>
+        <input type="number" id="req-fps" name="req-fps" value="30" />
+        <div>
+          <button @click=${this._startButton}>Start</button>
+          <button @click=${this._stopButton}>Stop</button>
         </div>
-        <div id="canvas-container">
-          <shapes-canvas 
-            .canvasWidth=${this.canvasWidth}
-            .canvasHeight=${this.canvasHeight}
-            .squares=${this.squares}
-          ></shapes-canvas>
-        </div>
+        <p>Measuring: ${this.measuredFps} fps</p>
+      </div>
+      <div id="canvas-container">
+        <shapes-canvas
+          .canvasWidth=${this.canvasWidth}
+          .canvasHeight=${this.canvasHeight}
+          .squares=${this.squares}
+        ></shapes-canvas>
       </div>
     `;
   }
 
   private _startButton() {
-    // Get sideLength
-    const sideLengthInput = this.shadowRoot?.getElementById('side-length') as HTMLInputElement;
-    const sideLength = Number(sideLengthInput.value);
-    // Get numberOfSquares
-    const numberOfSquaresInput = this.shadowRoot?.getElementById("num-squares") as HTMLInputElement;
-    const numberOfSquares = Number(numberOfSquaresInput.value);
-    // Get numberSpinning
-    const numberSpinningInput = this.shadowRoot?.getElementById("num-spinning") as HTMLInputElement;
-    const numberSpinning = Number(numberSpinningInput.value);
-    
-    this._createSquares(numberOfSquares, sideLength, numberSpinning);
+    this._readInputs();
+    this._createSquares();
     this._setMaxCanvasWidthAndHeight();
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
     this.intervalId = setInterval(() => {
-      this._createSquares(numberOfSquares, sideLength, numberSpinning)
-    }, 1000/60);
+      this._measureFps();      
+      this._spinSquares();
+    }
+      , 1000 / this.reqFps);
   }
 
-  private _createSquares(numberOfSquares: number, sideLength: number, numberSpinning: number) {
-    const squaresPerRow = Math.round(Math.sqrt(numberOfSquares));
-    const distance = 1.75*sideLength;
+  private _readInputs() {
+    // Get sideLength
+    const sideLengthInput = this.shadowRoot?.getElementById(
+      'side-length'
+    ) as HTMLInputElement;
+    this.sideLength = Number(sideLengthInput.value);
+    // Get numberOfSquares
+    const numberOfSquaresInput = this.shadowRoot?.getElementById(
+      'num-squares'
+    ) as HTMLInputElement;
+    this.numberOfSquares = Number(numberOfSquaresInput.value);
+    // Get numberSpinning
+    const numberSpinningInput = this.shadowRoot?.getElementById(
+      'num-spinning'
+    ) as HTMLInputElement;
+    this.numberSpinning = Number(numberSpinningInput.value);
+    // Get frames per sec
+    const fpsInput = this.shadowRoot?.getElementById(
+      'req-fps'
+    ) as HTMLInputElement;
+    this.reqFps = Number(fpsInput.value);
+  }
+
+  private _createSquares() {
+    const squaresPerRow = Math.round(Math.sqrt(this.numberOfSquares));
     const squares: Square[] = [];
-    for (let n = 1; n <= numberOfSquares; n++) {
-      const row = Math.ceil(n/squaresPerRow); 
-      const colum = n - (row - 1)*squaresPerRow
-      const x =  distance*colum;
-      const y = distance*row;
+    for (let n = 1; n <= this.numberOfSquares; n++) {
+      const row = Math.ceil(n / squaresPerRow);
+      const colum = n - (row - 1) * squaresPerRow;
+      const x = this._distance() * colum;
+      const y = this._distance() * row;
       const square: Square = {
-        x: x,
-        y: y,
-        sideLength: sideLength,
-        rotation: (n <= numberSpinning) ? this.rotation : 0  
-      }
+        x,
+        y,
+        sideLength: this.sideLength,
+        rotation: 0,
+      };
       squares.push(square);
     }
-    this.rotation++;
     this.squares = squares;
   }
 
@@ -146,14 +147,40 @@ export class ShapesInMotionApp extends LitElement {
         maxHeight = square.y;
       }
     }
-    const distance = this.squares[0].sideLength*1.75;
-    this.canvasWidth = maxWidth + distance;
-    this.canvasHeight = maxHeight + distance;
+    this.canvasWidth = maxWidth + this._distance();
+    this.canvasHeight = maxHeight + this._distance();
   }
 
-_stopButton() {
-  clearInterval(this.intervalId);
-}
+  private _measureFps() {
+    // Check whether this is the first run
+    if (this.lastT == 0) {
+      this.lastT = performance.now();
+      return;
+    }
+    const t = performance.now();
+    const diff = t - this.lastT;
+    this.measuredFps = Math.round(1000/diff);
+    this.lastT = t;
+  }
+
+  private _spinSquares() {
+    this.squares = this.squares.map((square, n) => {
+      if (n < this.numberSpinning) {
+        square.rotation++;
+        return square;
+      }
+    
+      return square;
+    });
+    
+  }
+
+  _stopButton() {
+    if(this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = undefined;
+    }
+  }
 }
 
 declare global {

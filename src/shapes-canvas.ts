@@ -9,6 +9,8 @@ function squareTemplate(id: number, square: Square) {
       y=${square.y - square.sideLength / 2.0} 
       width=${square.sideLength} 
       height=${square.sideLength} 
+      rx=${square.sideLength/10}
+      ry=${square.sideLength/10}
       transform='rotate (${square.rotation} ${square.x} ${square.y})'
     ></rect>
   `;
