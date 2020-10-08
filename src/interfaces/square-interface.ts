@@ -3,5 +3,7 @@ export interface Square {
     y: number;
     sideLength: number;
     rotation: number;
+    isHighligted: boolean;
+    isSelected: boolean;
   }
   

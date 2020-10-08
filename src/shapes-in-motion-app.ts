@@ -130,6 +130,8 @@ export class ShapesInMotionApp extends LitElement {
         y,
         sideLength: this.sideLength,
         rotation: 0,
+        isHighligted: false,
+        isSelected: false,
       };
       squares.push(square);
     }
