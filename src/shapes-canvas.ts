@@ -1,4 +1,4 @@
-import {LitElement, html, customElement, property, svg} from 'lit-element';
+import {LitElement, html, customElement, property, svg, query} from 'lit-element';
 import {styleMap} from 'lit-html/directives/style-map.js';
 import {Square} from './interfaces/square-interface';
 
@@ -7,7 +7,8 @@ function squareTemplate(
   square: Square,
   enableHighlight,
   disableHighlight,
-  toggleSelect
+  toggleSelect,
+  startDrag
 ) {
   // Default style
   let strokeColor = 'black';
@@ -49,6 +50,7 @@ function squareTemplate(
       @mouseenter=${enableHighlight}
       @mouseleave=${disableHighlight}
       @click=${toggleSelect}
+      @mousedown=${startDrag}
       style=${styleMap(styles)}
     ></rect>
   `;
@@ -65,10 +67,13 @@ export class ShapesCanvas extends LitElement {
   @property({type: Array})
   squares: Square[] = [];
 
+  @query('svg')
+  svg!: SVGAElement;
+
+  draggedSqaure: Square | undefined = undefined;
+  dragStartPointerPosition = {x: 0, y: 0}; 
+
   render() {
-    if (this.squares.length === 0) {
-      return html`No shapes to render`;
-    }
     return html`
       <svg
         version="1.1"
@@ -76,6 +81,8 @@ export class ShapesCanvas extends LitElement {
         height=${this.canvasHeight}
         xmlns="http://www.w3.org/2000/svg"
         @click=${this._deselectAllSquares}
+        @mousemove=${(e) => this._drag(e)}
+        @mouseup=${() => this._endDrag()}
       >
         ${this.squares.map((square, id) =>
           squareTemplate(
@@ -83,7 +90,8 @@ export class ShapesCanvas extends LitElement {
             square,
             (e) => {e.stopPropagation(); this._enableHighlight(square)},
             (e) => {e.stopPropagation(); this._disableHighlight(square)},
-            (e) => {e.stopPropagation(); this._toggleSelect(square)}
+            (e) => {e.stopPropagation(); this._toggleSelect(square)},
+            (e) => {this._startDrag(e, square)}
           )
         )}
       </svg>
@@ -124,6 +132,42 @@ export class ShapesCanvas extends LitElement {
       square.isSelected = false;
       return square;
     })
+  }
+
+  private _getMousePosition(evt: MouseEvent) {
+    const CTM = this.svg.getScreenCTM();
+    return {
+      x: (evt.clientX - CTM.e) / CTM.a,
+      y: (evt.clientY - CTM.f) / CTM.d
+    };
+  }
+
+  private _startDrag(evt: MouseEvent, clickedSquare: Square) {
+    if (clickedSquare.isSelected) {
+      this.draggedSqaure = clickedSquare;
+      this.dragStartPointerPosition = this._getMousePosition(evt);
+    }
+  }
+
+  private _drag(evt: MouseEvent) {
+    if (this.draggedSqaure) {
+      const currentPointerPosition = this._getMousePosition(evt);
+      const deltaX = currentPointerPosition.x - this.dragStartPointerPosition.x;
+      const deltaY = currentPointerPosition.y - this.dragStartPointerPosition.y;
+      this.squares = this.squares.map((square) => {
+        if (square.isSelected) {
+          square.x += deltaX;
+          square.y += deltaY;
+          return square;
+        }
+        return square;
+      })
+      this.dragStartPointerPosition = currentPointerPosition;
+    }
+  }
+
+  private _endDrag() {
+    this.draggedSqaure = undefined;
   }
 }
 

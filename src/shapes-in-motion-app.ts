@@ -45,7 +45,7 @@ export class ShapesInMotionApp extends LitElement {
   @property({type: Array})
   squares: Square[] = [];
 
-  private intervalId: NodeJS.Timeout | undefined;
+  intervalId: NodeJS.Timeout | undefined = undefined;
   private sideLength: number = 0;
   private numberOfSquares: number = 0;
   private numberSpinning: number = 0;
@@ -61,7 +61,7 @@ export class ShapesInMotionApp extends LitElement {
         <label for="num-squares">Number of squares:</label>
         <input type="number" id="num-squares" name="num-squares" value="100"/>
         <label for="num-spinning">Number spinning:</label>
-        <input type="number" id="num-spinning" name="num-spinning" value="10"/>
+        <input type="number" id="num-spinning" name="num-spinning" value="0"/>
         <label for="req-fps">Frames per sec:</label>
         <input type="number" id="req-fps" name="req-fps" value="30" />
         <div>
@@ -87,11 +87,12 @@ export class ShapesInMotionApp extends LitElement {
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
-    this.intervalId = setInterval(() => {
-      this._measureFps();      
-      this._spinSquares();
-    }
-      , 1000 / this.reqFps);
+    if (this.numberSpinning > 0) {
+      this.intervalId = setInterval(() => {
+        this._measureFps();      
+        this._spinSquares();
+      }, 1000 / this.reqFps);
+    }      
   }
 
   private _readInputs() {
