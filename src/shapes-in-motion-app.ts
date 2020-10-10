@@ -15,13 +15,14 @@ export class ShapesInMotionApp extends LitElement {
     #input-parameters {
       width: 140px;
       margin-left: 10px;
+      margin-right: 10px;
       display: flex;
       flex-direction: column;
     }
 
-    #canvas-container {
-      overflow: scroll;
+    shapes-canvas {
       flex: 1;
+      width: 300px;
     }
 
     label {
@@ -34,23 +35,20 @@ export class ShapesInMotionApp extends LitElement {
   `;
 
   @property({type: Number})
-  canvasWidth = 0;
-
-  @property({type: Number})
-  canvasHeight = 0;
-
-  @property({type: Number})
   measuredFps = 0;
 
   @property({type: Array})
   squares: Square[] = [];
 
-  intervalId: NodeJS.Timeout | undefined = undefined;
+  private intervalId: NodeJS.Timeout | undefined = undefined;
   private sideLength: number = 0;
   private numberOfSquares: number = 0;
   private numberSpinning: number = 0;
   private reqFps: number = 0;
   private lastT: number = 0;
+  private viewBoxWidth = 0;
+  private viewBoxHeight = 0;
+  
   private _distance = () => this.sideLength * 1.75;
 
   render() {
@@ -70,12 +68,11 @@ export class ShapesInMotionApp extends LitElement {
         </div>
         <p>Measuring: ${this.measuredFps} fps</p>
       </div>
-      <div id="canvas-container">
-        <shapes-canvas
-          .canvasWidth=${this.canvasWidth}
-          .canvasHeight=${this.canvasHeight}
-          .squares=${this.squares}
-        ></shapes-canvas>
+      <shapes-canvas
+        .minViewBoxWidth=${this.viewBoxWidth}
+        .minViewBoxHeight=${this.viewBoxHeight}
+        .squares=${this.squares}
+      ></shapes-canvas>
       </div>
     `;
   }
@@ -83,7 +80,7 @@ export class ShapesInMotionApp extends LitElement {
   private _startButton() {
     this._readInputs();
     this._createSquares();
-    this._setMaxCanvasWidthAndHeight();
+    this._setViewBoxSize();
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
@@ -139,7 +136,7 @@ export class ShapesInMotionApp extends LitElement {
     this.squares = squares;
   }
 
-  private _setMaxCanvasWidthAndHeight() {
+  private _setViewBoxSize() {
     let maxWidth = 0;
     let maxHeight = 0;
     for (const square of this.squares.values()) {
@@ -150,8 +147,8 @@ export class ShapesInMotionApp extends LitElement {
         maxHeight = square.y;
       }
     }
-    this.canvasWidth = maxWidth + this._distance();
-    this.canvasHeight = maxHeight + this._distance();
+    this.viewBoxWidth = maxWidth + this._distance();
+    this.viewBoxHeight = maxHeight + this._distance();
   }
 
   private _measureFps() {
