@@ -22,7 +22,6 @@ export class ShapesInMotionApp extends LitElement {
 
     shapes-canvas {
       flex: 1;
-      width: 300px;
     }
 
     label {
@@ -41,13 +40,11 @@ export class ShapesInMotionApp extends LitElement {
   squares: Square[] = [];
 
   private intervalId: NodeJS.Timeout | undefined = undefined;
-  private sideLength: number = 0;
-  private numberOfSquares: number = 0;
-  private numberSpinning: number = 0;
-  private reqFps: number = 0;
-  private lastT: number = 0;
-  private viewBoxWidth = 0;
-  private viewBoxHeight = 0;
+  private sideLength = 0;
+  private numberOfSquares = 0;
+  private numberSpinning = 0;
+  private reqFps = 0;
+  private lastT = 0;
   
   private _distance = () => this.sideLength * 1.75;
 
@@ -69,8 +66,6 @@ export class ShapesInMotionApp extends LitElement {
         <p>Measuring: ${this.measuredFps} fps</p>
       </div>
       <shapes-canvas
-        .minViewBoxWidth=${this.viewBoxWidth}
-        .minViewBoxHeight=${this.viewBoxHeight}
         .squares=${this.squares}
       ></shapes-canvas>
       </div>
@@ -80,7 +75,6 @@ export class ShapesInMotionApp extends LitElement {
   private _startButton() {
     this._readInputs();
     this._createSquares();
-    this._setViewBoxSize();
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
@@ -134,21 +128,6 @@ export class ShapesInMotionApp extends LitElement {
       squares.push(square);
     }
     this.squares = squares;
-  }
-
-  private _setViewBoxSize() {
-    let maxWidth = 0;
-    let maxHeight = 0;
-    for (const square of this.squares.values()) {
-      if (square.x > maxWidth) {
-        maxWidth = square.x;
-      }
-      if (square.y > maxHeight) {
-        maxHeight = square.y;
-      }
-    }
-    this.viewBoxWidth = maxWidth + this._distance();
-    this.viewBoxHeight = maxHeight + this._distance();
   }
 
   private _measureFps() {

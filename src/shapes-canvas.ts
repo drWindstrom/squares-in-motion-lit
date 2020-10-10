@@ -1,4 +1,4 @@
-import {LitElement, html, customElement, property, svg, query, css} from 'lit-element';
+import {LitElement, html, customElement, property, svg, query} from 'lit-element';
 import {styleMap} from 'lit-html/directives/style-map.js';
 import {Square} from './interfaces/square-interface';
 
@@ -58,108 +58,70 @@ function squareTemplate(
 
 @customElement('shapes-canvas')
 export class ShapesCanvas extends LitElement {
-  static styles = css`
-    :host {
-      display: flex;
-    }
-
-    #canvas-container {
-      overflow: scroll;
-      flex: 1;
-    }
-
-    svg {
-      border-width: 2px;
-      border-style: solid;
-    }
-  `;
-  
-  @property({type: Number})
-  minViewBoxWidth = 0;
-
-  @property({type: Number})
-  minViewBoxHeight = 0;
-
-  @property({type: Number})
-  svgZoom = 1;
-
-  @property({type: Number})
-  viewBoxZoom = 1;
-
   @property({type: Array})
   squares: Square[] = [];
   
   @property({type: Number})  
-  minimumSvgWidth: number = 0;
+  viewportWidth = 0;
   
   @property({type: Number})
-  minimumSvgHeight: number = 0;
+  viewportHeight = 0;
+
+  @property({type: Number})
+  zoom = 1;
 
   @query('svg')
   svg!: SVGAElement;
-
-  @query('div')
-  svgContainer!: HTMLElement;
 
   draggedSqaure: Square | undefined = undefined;
   dragStartPointerPosition = {x: 0, y: 0};
 
   constructor() {
     super();
-    window.onresize = () => this._setMinimumSvgSize();
+    window.onresize = () => this._setViewportSize();
   }
 
   firstUpdated() {
-   this._setMinimumSvgSize();
+   this._setViewportSize();
   }
 
-  private _setMinimumSvgSize() {
-    this.minimumSvgWidth = this.svgContainer.clientWidth;
-    this.minimumSvgHeight = this.svgContainer.clientHeight;
+  private _setViewportSize() {
+    this.viewportWidth = this.svg.clientWidth;
+    this.viewportHeight = this.svg.clientHeight;
   }
 
-  get svgWidth(): number {
-    return this.svgZoom * this.minimumSvgWidth
+  get viewboxWidth(): number {
+    return this.zoom * this.viewportWidth;
   }
 
-  get svgHeight(): number {
-    return this.svgZoom * this.minimumSvgHeight;    
-  }
-
-  get viewWidth(): number {
-    return this.viewBoxZoom * this.minimumSvgWidth;
-  }
-
-  get viewHeight(): number {
-    return this.viewBoxZoom * this.minimumSvgHeight;    
+  get viewboxHeight(): number {
+    return this.zoom * this.viewportHeight;    
   }
   
   render() {
     return html`
-      <div id="canvas-container">
-        <svg
-          version="1.1"
-          width=${this.svgWidth}
-          height=${this.svgHeight}
-          viewBox="0 0 ${this.viewWidth} ${this.viewHeight}"
-          xmlns="http://www.w3.org/2000/svg"
-          @click=${(e: MouseEvent) => this._deselectAllSquares(e)}
-          @mousemove=${(e: MouseEvent) => this._drag(e)}
-          @mouseup=${() => this._endDrag()}
-          @wheel=${(e: WheelEvent) => this._zoom(e)}
-        >
-          ${this.squares.map((square, id) =>
-            squareTemplate(
-              id,
-              square,
-              (e) => {e.stopPropagation(); this._enableHighlight(square)},
-              (e) => {e.stopPropagation(); this._disableHighlight(square)},
-              (e) => {e.stopPropagation(); this._toggleSelect(square)},
-              (e) => {this._startDrag(e, square)}
-            )
-          )}
-        </svg>
-      </div>
+      <svg
+        version="1.1"
+        width="100%"
+        height="100%"
+        viewBox="0 0 ${this.viewboxWidth} ${this.viewboxHeight}"
+        xmlns="http://www.w3.org/2000/svg"
+        @click=${(e: MouseEvent) => this._deselectAllSquares(e)}
+        @mousemove=${(e: MouseEvent) => this._drag(e)}
+        @mouseup=${() => this._endDrag()}
+        @wheel=${(e: WheelEvent) => this._zoom(e)}
+      >
+        ${this.squares.map((square, id) =>
+          squareTemplate(
+            id,
+            square,
+            (e) => {e.stopPropagation(); this._enableHighlight(square)},
+            (e) => {e.stopPropagation(); this._disableHighlight(square)},
+            (e) => {e.stopPropagation(); this._toggleSelect(square)},
+            (e) => {this._startDrag(e, square)}
+          )
+        )}
+      </svg>
     `;
   }
 
@@ -203,7 +165,7 @@ export class ShapesCanvas extends LitElement {
 
   private _getMousePosition(evt: MouseEvent) {
     const CTM = this.svg.getScreenCTM();
-    let mousePos = {x: 0, y: 0};
+    const mousePos = {x: 0, y: 0};
     if (CTM) {
       mousePos.x = (evt.clientX - CTM.e) / CTM.a;
       mousePos.y = (evt.clientY - CTM.f) / CTM.d;
@@ -243,23 +205,8 @@ export class ShapesCanvas extends LitElement {
     evt.preventDefault();
     let zoomFaktor = 1.0;
     (evt.deltaY < 0) ? zoomFaktor = 0.9 : zoomFaktor = 1.1;
-    if (this.svgZoom <= 1.0 && this.viewBoxZoom <= 1.0 && zoomFaktor > 1.0 ) {
-      this.svgZoom = this.svgZoom * zoomFaktor;
-      return;
-    }
-    if (this.svgZoom <= 1.0 && this.viewBoxZoom <= 1.0 && zoomFaktor < 1.0 ) {
-      this.viewBoxZoom = this.viewBoxZoom / zoomFaktor;
-      return;
-    }
-    if (this.svgZoom > 1.0) {
-      this.svgZoom = this.svgZoom * zoomFaktor;
-      return;
-    }
-    if (this.viewBoxZoom > 1.0) {
-      this.viewBoxZoom = this.viewBoxZoom / zoomFaktor;
-      return;
-    }
-  }
+    this.zoom /= zoomFaktor;
+  }  
 }
 
 declare global {
