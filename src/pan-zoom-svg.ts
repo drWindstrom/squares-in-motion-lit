@@ -1,14 +1,16 @@
 import {LitElement, html, customElement, property, svg, query} from 'lit-element';
 import {styleMap} from 'lit-html/directives/style-map.js';
 import {Square} from './interfaces/square-interface';
+import {Point} from './interfaces/point_interface';
+import { invertYAxis } from './utils';
 
 function squareTemplate(
   id: number,
   square: Square,
-  enableHighlight: (e: MouseEvent) => void,
-  disableHighlight: (e: MouseEvent) => void,
-  toggleSelect: (e: MouseEvent) => void,
-  startDrag: (e: MouseEvent) => void
+  handleSquareMouseEnter: (e: MouseEvent) => void,
+  handleSquareMouseLeave: (e: MouseEvent) => void,
+  handleSquareClick: (e: MouseEvent) => void,
+  handleSquareMouseDown: (e: MouseEvent) => void
 ) {
   // Default style
   let strokeColor = 'black';
@@ -36,28 +38,72 @@ function squareTemplate(
     stroke: strokeColor,
     strokeWidth: strokeWidth,
   };
+  let location = {
+    x: square.coordinate.x - square.sideLength / 2.0,
+    y: square.coordinate.y + square.sideLength / 2.0
+  };
+  location = invertYAxis(location);
 
   return svg`
     <rect 
       id=${'square' + id}
-      x=${square.x - square.sideLength / 2.0} 
-      y=${square.y - square.sideLength / 2.0} 
+      x=${location.x} 
+      y=${location.y} 
       width=${square.sideLength} 
       height=${square.sideLength} 
       rx=${square.sideLength / 10}
       ry=${square.sideLength / 10}
-      transform='rotate (${square.rotation} ${square.x} ${square.y})'
-      @mouseenter=${enableHighlight}
-      @mouseleave=${disableHighlight}
-      @click=${toggleSelect}
-      @mousedown=${startDrag}
+      transform='rotate (${square.rotation} ${square.coordinate.x} ${square.coordinate.y})'
+      @mouseenter=${handleSquareMouseEnter}
+      @mouseleave=${handleSquareMouseLeave}
+      @click=${handleSquareClick}
+      @mousedown=${handleSquareMouseDown}
       style=${styleMap(styles)}
     ></rect>
   `;
 }
 
-@customElement('shapes-canvas')
-export class ShapesCanvas extends LitElement {
+function originTemplate(origin: Point, size: number, strokeWidth: number) {
+  let markerSize = 3 * strokeWidth;
+  let xArrow = { x: origin.x + size, y: origin.y };
+  let yArrow = { x: origin.x, y: origin.y + size };
+  let xLabel = { x: xArrow.x - 4*markerSize , y: xArrow.y - 3*markerSize };
+  let yLabel = { x: yArrow.x - 3*markerSize , y: yArrow.y - 4*markerSize };
+  // Invert y-axis
+  xArrow = invertYAxis(xArrow);
+  yArrow = invertYAxis(yArrow);
+  xLabel = invertYAxis(xLabel);
+  yLabel = invertYAxis(yLabel);
+  const invOrigin = invertYAxis(origin);
+    
+  return svg`
+    <marker 
+      id="arrow" 
+      viewBox="0 0 10 10" 
+      refX="5" 
+      refY="5"
+      markerWidth=${markerSize} 
+      markerHeight=${markerSize}
+      orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" />
+    </marker>
+    <path 
+      d='M ${yArrow.x} ${yArrow.y} 
+         L ${invOrigin.x} ${invOrigin.y} 
+         L ${xArrow.x} ${xArrow.y}'
+      stroke="black"
+      stroke-width=${strokeWidth}
+      fill="none"
+      marker-start="url(#arrow)"
+      marker-end="url(#arrow)"
+    />
+    <text x=${xLabel.x} y=${xLabel.y} >X</text>
+    <text x=${yLabel.x} y=${yLabel.y} >Y</text>
+  `;
+}
+
+@customElement('pan-zoom-svg')
+export class PanZoomSvg extends LitElement {
   @property({type: Array})
   squares: Square[] = [];
   
@@ -104,20 +150,21 @@ export class ShapesCanvas extends LitElement {
         version="1.1"
         width="100%"
         height="100%"
-        viewBox="0 0 ${this.viewboxWidth} ${this.viewboxHeight}"
+        viewBox="-50 -500 ${this.viewboxWidth} ${this.viewboxHeight}"
         xmlns="http://www.w3.org/2000/svg"
-        @click=${(e: MouseEvent) => this._deselectAllSquares(e)}
-        @mousemove=${(e: MouseEvent) => this._drag(e)}
-        @mouseup=${() => this._endDrag()}
-        @wheel=${(e: WheelEvent) => this._zoom(e)}
+        @click=${(e: MouseEvent) => this.handleSvgClick(e)}
+        @mousemove=${(e: MouseEvent) => this.handleSvgMouseMove(e)}
+        @mouseup=${() => this.handleSvgMouseUp()}
+        @wheel=${(e: WheelEvent) => this.handleSvgWheel(e)}
       >
+        ${originTemplate({x: 0, y: 0}, 100, 2)}
         ${this.squares.map((square, id) =>
           squareTemplate(
             id,
             square,
-            (e) => {e.stopPropagation(); this._enableHighlight(square)},
-            (e) => {e.stopPropagation(); this._disableHighlight(square)},
-            (e) => {e.stopPropagation(); this._toggleSelect(square)},
+            (e) => {e.stopPropagation(); this.handleSquareMouseEnter(square)},
+            (e) => {e.stopPropagation(); this.handleSquareMouseLeave(square)},
+            (e) => {e.stopPropagation(); this.handleSquareClick(square)},
             (e) => {this._startDrag(e, square)}
           )
         )}
@@ -125,7 +172,7 @@ export class ShapesCanvas extends LitElement {
     `;
   }
 
-  private _enableHighlight(changedSquare: Square) {
+  private handleSquareMouseEnter(changedSquare: Square) {
     this.squares = this.squares.map((square) => {
       if (square === changedSquare) {
         square.isHighligted = true;
@@ -135,7 +182,7 @@ export class ShapesCanvas extends LitElement {
     });
   }
 
-  private _disableHighlight(changedSquare: Square) {
+  private handleSquareMouseLeave(changedSquare: Square) {
     this.squares = this.squares.map((square) => {
       if (square === changedSquare) {
         square.isHighligted = false;
@@ -145,7 +192,7 @@ export class ShapesCanvas extends LitElement {
     })
   }
 
-  private _toggleSelect(clickedSquare: Square) {
+  private handleSquareClick(clickedSquare: Square) {
     this.squares = this.squares.map((square) => {
       if (square === clickedSquare) {
         square.isSelected = !square.isSelected;
@@ -154,21 +201,23 @@ export class ShapesCanvas extends LitElement {
     })
   }
 
-  private _deselectAllSquares(evt: MouseEvent) {
-    const mousePos = this._getMousePosition(evt);
-    console.log(`Clicked x: ${mousePos.x} y: ${mousePos.y}`)
+  private handleSvgClick(e: MouseEvent) {
+    // Print mouse coordinates to console
+    const mousePositon = this.convertClientViewportToSvgUserSpace(e);
+    console.log(`SVG user space [x: ${mousePositon.x}, y: ${mousePositon.y}]`)
+    // Deselect all squares
     this.squares = this.squares.map((square) => {
       square.isSelected = false;
       return square;
     })
   }
 
-  private _getMousePosition(evt: MouseEvent) {
+  private convertClientViewportToSvgUserSpace(e: MouseEvent) {
     const CTM = this.svg.getScreenCTM();
     const mousePos = {x: 0, y: 0};
     if (CTM) {
-      mousePos.x = (evt.clientX - CTM.e) / CTM.a;
-      mousePos.y = (evt.clientY - CTM.f) / CTM.d;
+      mousePos.x = ((e.clientX - CTM.e) / CTM.a);
+      mousePos.y = -(e.clientY - CTM.f) / CTM.d;
     }
     return mousePos;
   }
@@ -176,19 +225,19 @@ export class ShapesCanvas extends LitElement {
   private _startDrag(evt: MouseEvent, clickedSquare: Square) {
     if (clickedSquare.isSelected) {
       this.draggedSqaure = clickedSquare;
-      this.dragStartPointerPosition = this._getMousePosition(evt);
+      this.dragStartPointerPosition = this.convertClientViewportToSvgUserSpace(evt);
     }
   }
 
-  private _drag(evt: MouseEvent) {
+  private handleSvgMouseMove(evt: MouseEvent) {
     if (this.draggedSqaure) {
-      const currentPointerPosition = this._getMousePosition(evt);
+      const currentPointerPosition = this.convertClientViewportToSvgUserSpace(evt);
       const deltaX = currentPointerPosition.x - this.dragStartPointerPosition.x;
       const deltaY = currentPointerPosition.y - this.dragStartPointerPosition.y;
       this.squares = this.squares.map((square) => {
         if (square.isSelected) {
-          square.x += deltaX;
-          square.y += deltaY;
+          square.coordinate.x -= deltaX;
+          square.coordinate.y -= deltaY;
           return square;
         }
         return square;
@@ -197,11 +246,11 @@ export class ShapesCanvas extends LitElement {
     }
   }
 
-  private _endDrag() {
+  private handleSvgMouseUp() {
     this.draggedSqaure = undefined;
   }
 
-  private _zoom(evt: WheelEvent) {
+  private handleSvgWheel(evt: WheelEvent) {
     evt.preventDefault();
     let zoomFaktor = 1.0;
     (evt.deltaY < 0) ? zoomFaktor = 0.9 : zoomFaktor = 1.1;
@@ -211,6 +260,6 @@ export class ShapesCanvas extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'shapes-canvas': ShapesCanvas;
+    'pan-zoom-svg': PanZoomSvg;
   }
 }

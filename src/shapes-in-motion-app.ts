@@ -1,5 +1,5 @@
 import {LitElement, html, customElement, property, css} from 'lit-element';
-import './shapes-canvas';
+import './pan-zoom-svg';
 import {Square} from './interfaces/square-interface';
 
 @customElement('shapes-in-motion-app')
@@ -20,7 +20,7 @@ export class ShapesInMotionApp extends LitElement {
       flex-direction: column;
     }
 
-    shapes-canvas {
+    pan-zoom-svg {
       flex: 1;
     }
 
@@ -65,9 +65,9 @@ export class ShapesInMotionApp extends LitElement {
         </div>
         <p>Measuring: ${this.measuredFps} fps</p>
       </div>
-      <shapes-canvas
+      <pan-zoom-svg
         .squares=${this.squares}
-      ></shapes-canvas>
+      ></pan-zoom-svg>
       </div>
     `;
   }
@@ -118,8 +118,7 @@ export class ShapesInMotionApp extends LitElement {
       const x = this._distance() * colum;
       const y = this._distance() * row;
       const square: Square = {
-        x,
-        y,
+        coordinate: {x, y},
         sideLength: this.sideLength,
         rotation: 0,
         isHighligted: false,
