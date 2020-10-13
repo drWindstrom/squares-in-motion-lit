@@ -28,7 +28,7 @@ export function squareTemplate(
     cursorStyle = 'move';
   }
 
-  const center = invertYAxis(square.coordinate);
+  const center = invertYAxis({x: square.x, y: square.y});
 
   return svg`
       <rect 

@@ -36,8 +36,8 @@ export class ShapesInMotionApp extends LitElement {
   @property({type: Number})
   measuredFps = 0;
 
-  @property({type: Array})
-  squares: Square[] = [];
+  @property({type: Object})
+  squares: Record<string, Square> = {};
 
   private intervalId: NodeJS.Timeout | undefined = undefined;
   private sideLength = 0;
@@ -46,7 +46,9 @@ export class ShapesInMotionApp extends LitElement {
   private reqFps = 0;
   private lastT = 0;
   
-  private _distance = () => this.sideLength * 1.75;
+  private get distance() {
+    return this.sideLength * 1.75;
+  }
 
   render() {
     return html`
@@ -111,22 +113,24 @@ export class ShapesInMotionApp extends LitElement {
 
   private _createSquares() {
     const squaresPerRow = Math.round(Math.sqrt(this.numberOfSquares));
-    const squares: Square[] = [];
+    
     for (let n = 1; n <= this.numberOfSquares; n++) {
       const row = Math.ceil(n / squaresPerRow);
       const colum = n - (row - 1) * squaresPerRow;
-      const x = this._distance() * colum;
-      const y = this._distance() * row;
+      const x = this.distance * colum;
+      const y = this.distance * row;
+      const id = n.toString();
       const square: Square = {
-        coordinate: {x, y},
+        x,
+        y,
         sideLength: this.sideLength,
         rotation: 0,
         isHighligted: false,
         isSelected: false,
       };
-      squares.push(square);
+      this.squares[id] = square;
     }
-    this.squares = squares;
+    
   }
 
   private _measureFps() {
@@ -142,12 +146,19 @@ export class ShapesInMotionApp extends LitElement {
   }
 
   private _spinSquares() {
-    this.squares = this.squares.map((square, n) => {
-      if (n < this.numberSpinning) {
-        square = { ...square, rotation: square.rotation + 1 };
+    this.squares = {...this.squares}
+    let n = 0;
+    for (const id in this.squares) {
+      if (n >= this.numberSpinning) {
+        break;
       }
-      return square;
-    });
+      const changed = this.squares[id];
+      this.squares[id] = {
+        ...changed,
+        rotation: changed.rotation + 1,
+      };
+      n++;
+    }
   }
 
   _stopButton() {

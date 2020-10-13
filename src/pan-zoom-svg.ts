@@ -1,11 +1,11 @@
-import {LitElement, html, customElement, property, query} from 'lit-element';
+import {LitElement, html, customElement, property, query, SVGTemplateResult} from 'lit-element';
 import {Square} from './interfaces/interfaces';
 import {squareTemplate, originTemplate} from './templates';
 
 @customElement('pan-zoom-svg')
 export class PanZoomSvg extends LitElement {
-  @property({type: Array})
-  squares: Square[] = [];
+  @property({type: Object})
+  squares: Record<string, Square> = {};
 
   @property({type: Number})
   viewBoxMinX = 0;
@@ -56,6 +56,19 @@ export class PanZoomSvg extends LitElement {
   }
 
   render() {
+    const squareTemplates: SVGTemplateResult[] = [];
+    for (const id in this.squares) {
+      const square = this.squares[id];
+      const template = squareTemplate(
+        square,
+        () => this.handleSquareMouseEnter(id),
+        () => this.handleSquareMouseLeave(id),
+        (e) => this.handleSquareClick(e, id),
+        (e) => this.handleSquareMouseDown(e, id)
+      )
+      squareTemplates.push(template); 
+    }
+   
     return html`
       <svg
         version="1.1"
@@ -69,61 +82,52 @@ export class PanZoomSvg extends LitElement {
         @mousemove=${this.handleSvgMouseMove}
         @wheel=${this.handleSvgWheel}
       >
-        <path
-          d="M 130 -110 C 120 -140, 180 -140, 170 -110"
-          stroke="black"
-          stroke-width="2"
-          fill="transparent"
-        />
         ${originTemplate({x: 0, y: 0}, 100, 2)}
-        ${this.squares.map((square) =>
-          squareTemplate(
-            square,
-            () => this.handleSquareMouseEnter(square),
-            () => this.handleSquareMouseLeave(square),
-            (e) => this.handleSquareClick(e, square),
-            (e) => this.handleSquareMouseDown(e, square)
-          )
-        )}
+        ${squareTemplates}
       </svg>
     `;
   }
 
-  private handleSquareMouseEnter(changed: Square) {
-    this.squares = this.squares.map((square) => {
-      if (square === changed) {
-        square = {...square, isHighligted: true};
-      }
-      return square;
-    });
+  private handleSquareMouseEnter(squareId: string) {
+    this.squares = {...this.squares};
+    const changed = this.squares[squareId];
+    this.squares[squareId] = {
+      ...changed,
+      isHighligted: true,
+    };
   }
 
-  private handleSquareMouseLeave(changed: Square) {
-    this.squares = this.squares.map((square) => {
-      if (square === changed) {
-        square = {...square, isHighligted: false};
-      }
-      return square;
-    });
+  private handleSquareMouseLeave(squareId: string) {
+    this.squares = {...this.squares};
+    const changed = this.squares[squareId];
+    this.squares[squareId] = {
+      ...changed,
+      isHighligted: false,
+    };
   }
 
-  private handleSquareClick(e: MouseEvent, changed: Square) {
+  private handleSquareClick(e: MouseEvent, squareId: string) {
     e.stopPropagation();
-    this.squares = this.squares.map((square) => {
-      if (square === changed) {
-        square = {...square, isSelected: !square.isSelected};
-      }
-      return square;
-    });
+    
+    this.squares = {...this.squares};
+    const changed = this.squares[squareId];
+    this.squares[squareId] = {
+      ...changed,
+      isSelected: !changed.isSelected,
+    };
   }
 
   private handleSvgClick(e: MouseEvent) {
     const MAIN_BUTTON = 0;
     if (e.button === MAIN_BUTTON) {
       // Deselect all squares
-      this.squares = this.squares.map((square) => {
-        return {...square, isSelected: false};
-      });
+      this.squares = {...this.squares};
+      for (const id in this.squares) {
+        this.squares[id] = {
+          ...this.squares[id],
+          isSelected: false,
+        };
+      }
     }
   }
 
@@ -142,9 +146,9 @@ export class PanZoomSvg extends LitElement {
   lastMousePosition = {x: 0, y: 0};
   lastUpdate = 0;
 
-  private handleSquareMouseDown(e: MouseEvent, changed: Square) {
+  private handleSquareMouseDown(e: MouseEvent, squareId: string) {
     const MAIN_BUTTON = 0;
-    if (changed.isSelected && e.button === MAIN_BUTTON) {
+    if (this.squares[squareId].isSelected && e.button === MAIN_BUTTON) {
       e.stopPropagation();
       this.isSquareDrag = true;
       this.lastMousePosition = this.clientToSvgUserSpaceCoordinates(e);
@@ -174,17 +178,18 @@ export class PanZoomSvg extends LitElement {
       const deltaX = mousePosition.x - this.lastMousePosition.x;
       const deltaY = mousePosition.y - this.lastMousePosition.y;
       if (this.isSquareDrag) {
-        this.squares = this.squares.map((square) => {
+        this.squares = { ...this.squares };
+        for (const id in this.squares) {
+          let square = this.squares[id];
           if (square.isSelected) {
             // Move the square to the next position
-            const nextPosition = {
-              x: square.coordinate.x + deltaX,
-              y: square.coordinate.y + deltaY,
+            this.squares[id] = {
+              ...square,
+              x: square.x + deltaX,
+              y: square.y + deltaY,
             };
-            square = {...square, coordinate: nextPosition};
           }
-          return square;
-        });
+        }
       }
       // Save last mouse position
       this.lastMousePosition = mousePosition;

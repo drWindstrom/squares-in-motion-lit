@@ -1,7 +1,6 @@
-import { Point } from "./point_interface";
-
 export interface Square {
-    coordinate: Point
+    x: number;
+    y: number;
     sideLength: number;
     rotation: number;
     isHighligted: boolean;
