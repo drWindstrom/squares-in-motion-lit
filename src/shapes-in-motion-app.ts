@@ -1,6 +1,6 @@
 import {LitElement, html, customElement, property, css} from 'lit-element';
 import './pan-zoom-svg';
-import {Square} from './interfaces/square-interface';
+import {Square} from './interfaces/interfaces';
 
 @customElement('shapes-in-motion-app')
 export class ShapesInMotionApp extends LitElement {
@@ -144,13 +144,10 @@ export class ShapesInMotionApp extends LitElement {
   private _spinSquares() {
     this.squares = this.squares.map((square, n) => {
       if (n < this.numberSpinning) {
-        square.rotation++;
-        return square;
+        square = { ...square, rotation: square.rotation + 1 };
       }
-    
       return square;
     });
-    
   }
 
   _stopButton() {

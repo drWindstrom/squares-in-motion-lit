@@ -1,106 +1,17 @@
-import {
-  LitElement,
-  html,
-  customElement,
-  property,
-  svg,
-  query,
-} from 'lit-element';
-import {Square} from './interfaces/square-interface';
-import {Point} from './interfaces/point_interface';
-import {invertYAxis} from './utils';
-
-function squareTemplate(
-  square: Square,
-  onMouseEnter: (e: MouseEvent) => void,
-  onMouseLeave: (e: MouseEvent) => void,
-  onClick: (e: MouseEvent) => void,
-  onMouseDown: (e: MouseEvent) => void
-) {
-  // Default style
-  let strokeColor = 'black';
-  let strokeWidth = '0';
-  let cursorStyle = 'grab';
-  if (square.isHighligted && !square.isSelected) {
-    // Highlighted only
-    strokeColor = 'rgb(85,160,185)';
-    strokeWidth = '2';
-  } else if (square.isSelected && !square.isHighligted) {
-    // Selected only
-    strokeColor = 'rgb(175,35,95)';
-    strokeWidth = '2';
-  } else if (square.isSelected && square.isHighligted) {
-    // Highlighted and selected
-    strokeColor = 'rgb(175,35,95)';
-    strokeWidth = '2';
-    cursorStyle = 'move';
-  }
-
-  const center = invertYAxis(square.coordinate);
-
-  return svg`
-    <rect 
-      x=${-square.sideLength / 2} 
-      y=${-square.sideLength / 2} 
-      width=${square.sideLength} 
-      height=${square.sideLength} 
-      rx=${square.sideLength / 10}
-      ry=${square.sideLength / 10}
-      stroke=${strokeColor}
-      stroke-width=${strokeWidth}
-      cursor=${cursorStyle}
-      transform='translate(${center.x} ${center.y}) rotate(${square.rotation})'
-      @mouseenter=${onMouseEnter}
-      @mouseleave=${onMouseLeave}
-      @click=${onClick}
-      @mousedown=${onMouseDown}
-    ></rect>
-  `;
-}
-
-function originTemplate(origin: Point, size: number, strokeWidth: number) {
-  const markerSize = 3 * strokeWidth;
-  let xArrow = {x: origin.x + size, y: origin.y};
-  let yArrow = {x: origin.x, y: origin.y + size};
-  let xLabel = {x: xArrow.x - 4 * markerSize, y: xArrow.y - 3 * markerSize};
-  let yLabel = {x: yArrow.x - 3 * markerSize, y: yArrow.y - 4 * markerSize};
-  // Invert y-axis
-  xArrow = invertYAxis(xArrow);
-  yArrow = invertYAxis(yArrow);
-  xLabel = invertYAxis(xLabel);
-  yLabel = invertYAxis(yLabel);
-  const invOrigin = invertYAxis(origin);
-
-  return svg`
-    <marker 
-      id="arrow" 
-      viewBox="0 0 10 10" 
-      refX="5" 
-      refY="5"
-      markerWidth=${markerSize} 
-      markerHeight=${markerSize}
-      orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" />
-    </marker>
-    <path 
-      d='M ${yArrow.x} ${yArrow.y} 
-         L ${invOrigin.x} ${invOrigin.y} 
-         L ${xArrow.x} ${xArrow.y}'
-      stroke="black"
-      stroke-width=${strokeWidth}
-      fill="none"
-      marker-start="url(#arrow)"
-      marker-end="url(#arrow)"
-    />
-    <text x=${xLabel.x} y=${xLabel.y} >X</text>
-    <text x=${yLabel.x} y=${yLabel.y} >Y</text>
-  `;
-}
+import {LitElement, html, customElement, property, query} from 'lit-element';
+import {Square} from './interfaces/interfaces';
+import {squareTemplate, originTemplate} from './templates';
 
 @customElement('pan-zoom-svg')
 export class PanZoomSvg extends LitElement {
   @property({type: Array})
   squares: Square[] = [];
+
+  @property({type: Number})
+  viewBoxMinX = 0;
+
+  @property({type: Number})
+  viewBoxMinY = 0;
 
   @property({type: Number})
   viewportWidth = 0;
@@ -114,21 +25,26 @@ export class PanZoomSvg extends LitElement {
   @query('svg')
   svg!: SVGAElement;
 
-  isDrag = false;
-  dragStartPosition = {x: 0, y: 0};
-
   constructor() {
     super();
     window.onresize = () => this.setViewportSize();
+    window.onmouseup = () => this.handleMouseUp();
   }
 
   firstUpdated() {
     this.setViewportSize();
+    this.setViewBoxMin();
   }
 
   private setViewportSize() {
     this.viewportWidth = this.svg.clientWidth;
     this.viewportHeight = this.svg.clientHeight;
+  }
+
+  private setViewBoxMin() {
+    const offset = 50;
+    this.viewBoxMinX = -offset;
+    this.viewBoxMinY = -this.svg.clientHeight + offset;
   }
 
   get viewboxWidth(): number {
@@ -145,16 +61,22 @@ export class PanZoomSvg extends LitElement {
         version="1.1"
         width="100%"
         height="100%"
-        viewBox="${-50} ${-this.viewportHeight + 50} ${this.viewboxWidth} ${this
-          .viewboxHeight}"
+        viewBox="${this.viewBoxMinX} ${this.viewBoxMinY} 
+                 ${this.viewboxWidth} ${this.viewboxHeight}"
         xmlns="http://www.w3.org/2000/svg"
         @click=${this.handleSvgClick}
+        @mousedown=${this.handleSvgMouseDown}
         @mousemove=${this.handleSvgMouseMove}
-        @mouseup=${this.handleSvgMouseUp}
         @wheel=${this.handleSvgWheel}
       >
+        <path
+          d="M 130 -110 C 120 -140, 180 -140, 170 -110"
+          stroke="black"
+          stroke-width="2"
+          fill="transparent"
+        />
         ${originTemplate({x: 0, y: 0}, 100, 2)}
-        ${this.squares.map(square =>
+        ${this.squares.map((square) =>
           squareTemplate(
             square,
             () => this.handleSquareMouseEnter(square),
@@ -168,7 +90,7 @@ export class PanZoomSvg extends LitElement {
   }
 
   private handleSquareMouseEnter(changed: Square) {
-    this.squares = this.squares.map(square => {
+    this.squares = this.squares.map((square) => {
       if (square === changed) {
         square = {...square, isHighligted: true};
       }
@@ -177,7 +99,7 @@ export class PanZoomSvg extends LitElement {
   }
 
   private handleSquareMouseLeave(changed: Square) {
-    this.squares = this.squares.map(square => {
+    this.squares = this.squares.map((square) => {
       if (square === changed) {
         square = {...square, isHighligted: false};
       }
@@ -187,30 +109,22 @@ export class PanZoomSvg extends LitElement {
 
   private handleSquareClick(e: MouseEvent, changed: Square) {
     e.stopPropagation();
-    this.squares = this.squares.map(square => {
+    this.squares = this.squares.map((square) => {
       if (square === changed) {
-        square = {...square, isSelected: !square.isSelected}
+        square = {...square, isSelected: !square.isSelected};
       }
       return square;
     });
   }
 
-  private handleSquareMouseDown(e: MouseEvent, changed: Square) {
-    e.stopPropagation();
-    if (changed.isSelected) {
-      this.isDrag = true;
-      this.dragStartPosition = this.clientToSvgUserSpaceCoordinates(e);
-    }
-  }
-
   private handleSvgClick(e: MouseEvent) {
-    // Print mouse coordinates to console
-    const mousePositon = this.clientToSvgUserSpaceCoordinates(e);
-    console.log(`SVG user space [x: ${mousePositon.x}, y: ${mousePositon.y}]`);
-    // Deselect all squares
-    this.squares = this.squares.map((square) => {
-      return {...square, isSelected: false};
-    });
+    const MAIN_BUTTON = 0;
+    if (e.button === MAIN_BUTTON) {
+      // Deselect all squares
+      this.squares = this.squares.map((square) => {
+        return {...square, isSelected: false};
+      });
+    }
   }
 
   private clientToSvgUserSpaceCoordinates(e: MouseEvent) {
@@ -223,36 +137,93 @@ export class PanZoomSvg extends LitElement {
     return mousePos;
   }
 
-  private handleSvgMouseMove(e: MouseEvent) {
-    if (!this.isDrag) {
-      return;
+  isSquareDrag = false;
+  isPan = false;
+  lastMousePosition = {x: 0, y: 0};
+  lastUpdate = 0;
+
+  private handleSquareMouseDown(e: MouseEvent, changed: Square) {
+    const MAIN_BUTTON = 0;
+    if (changed.isSelected && e.button === MAIN_BUTTON) {
+      e.stopPropagation();
+      this.isSquareDrag = true;
+      this.lastMousePosition = this.clientToSvgUserSpaceCoordinates(e);
     }
-    const pointerPosition = this.clientToSvgUserSpaceCoordinates(e);
-    const deltaX = pointerPosition.x - this.dragStartPosition.x;
-    const deltaY = pointerPosition.y - this.dragStartPosition.y;
-    this.squares = this.squares.map(square => {
-      if (square.isSelected) {
-        // Move the square to the next position
-        const nextPosition = {
-          x: square.coordinate.x + deltaX,
-          y: square.coordinate.y + deltaY
-        };
-        square = {...square, coordinate: nextPosition};
-      }
-      return square;
-    });
-    this.dragStartPosition = pointerPosition;
   }
 
-  private handleSvgMouseUp() {
-    this.isDrag = false;
+  private handleSvgMouseDown(e: MouseEvent) {
+    const MIDDLE_BUTTON = 1;
+    if (e.button === MIDDLE_BUTTON) {
+      this.isPan = true;
+      this.lastMousePosition = {
+        x: e.clientX,
+        y: e.clientY,
+      };
+    }
+  }
+
+  private handleSvgMouseMove(e: MouseEvent) {
+    // Throttle
+    // if(Date.now() - this.lastUpdate < 1000/30) {
+    //   return;
+    // }
+    // this.lastUpdate = Date.now();
+    // Dragging a square
+    if (this.isSquareDrag) {
+      const mousePosition = this.clientToSvgUserSpaceCoordinates(e);
+      const deltaX = mousePosition.x - this.lastMousePosition.x;
+      const deltaY = mousePosition.y - this.lastMousePosition.y;
+      if (this.isSquareDrag) {
+        this.squares = this.squares.map((square) => {
+          if (square.isSelected) {
+            // Move the square to the next position
+            const nextPosition = {
+              x: square.coordinate.x + deltaX,
+              y: square.coordinate.y + deltaY,
+            };
+            square = {...square, coordinate: nextPosition};
+          }
+          return square;
+        });
+      }
+      // Save last mouse position
+      this.lastMousePosition = mousePosition;
+    }
+    // Panning
+    if (this.isPan) {
+      const mousePosition = {x: e.clientX, y: e.clientY};
+      let deltaX = mousePosition.x - this.lastMousePosition.x;
+      let deltaY = mousePosition.y - this.lastMousePosition.y;
+      this.viewBoxMinX -= deltaX * this.zoom;
+      this.viewBoxMinY -= deltaY * this.zoom;
+      // Save last mouse position
+      this.lastMousePosition = mousePosition;
+    }
+  }
+
+  private handleMouseUp() {
+    this.isSquareDrag = false;
+    this.isPan = false;
   }
 
   private handleSvgWheel(e: WheelEvent) {
     e.preventDefault();
+    // Before zoom
+    const xBeforeZoom = e.offsetX * this.zoom;
+    const yBeforeZoom = e.offsetY * this.zoom;
+    // Update zoom
     let zoomFaktor = 1.0;
     e.deltaY < 0 ? (zoomFaktor = 0.9) : (zoomFaktor = 1.1);
     this.zoom /= zoomFaktor;
+    // After zoom
+    const xAfterZoom = e.offsetX * this.zoom;
+    const yAfterZoom = e.offsetY * this.zoom;
+    // Calculate shift due to zoom
+    const deltaX = xBeforeZoom - xAfterZoom;
+    const deltaY = yBeforeZoom - yAfterZoom;
+    // Translate coordinate system to prevent shift due to zoom
+    this.viewBoxMinX += deltaX;
+    this.viewBoxMinY += deltaY;
   }
 }
 
