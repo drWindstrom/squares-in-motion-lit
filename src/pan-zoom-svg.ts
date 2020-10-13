@@ -69,12 +69,6 @@ export class PanZoomSvg extends LitElement {
         @mousemove=${this.handleSvgMouseMove}
         @wheel=${this.handleSvgWheel}
       >
-        <path
-          d="M 130 -110 C 120 -140, 180 -140, 170 -110"
-          stroke="black"
-          stroke-width="2"
-          fill="transparent"
-        />
         ${originTemplate({x: 0, y: 0}, 100, 2)}
         ${this.squares.map((square) =>
           squareTemplate(
@@ -108,6 +102,13 @@ export class PanZoomSvg extends LitElement {
   }
 
   private handleSquareClick(e: MouseEvent, changed: Square) {
+    // Prevent the click event after dragging a square
+    if (this.finishingDrag) {
+      this.finishingDrag = false;
+      e.stopPropagation();
+      return;
+    }
+    // Regular click to select the square
     e.stopPropagation();
     this.squares = this.squares.map((square) => {
       if (square === changed) {
@@ -139,6 +140,7 @@ export class PanZoomSvg extends LitElement {
 
   isSquareDrag = false;
   isPan = false;
+  finishingDrag = false;
   lastMousePosition = {x: 0, y: 0};
   lastUpdate = 0;
 
@@ -177,11 +179,11 @@ export class PanZoomSvg extends LitElement {
         this.squares = this.squares.map((square) => {
           if (square.isSelected) {
             // Move the square to the next position
-            const nextPosition = {
-              x: square.coordinate.x + deltaX,
-              y: square.coordinate.y + deltaY,
+            square = {
+              ...square, 
+              x: square.x + deltaX,
+              y: square.y + deltaY
             };
-            square = {...square, coordinate: nextPosition};
           }
           return square;
         });
@@ -192,8 +194,8 @@ export class PanZoomSvg extends LitElement {
     // Panning
     if (this.isPan) {
       const mousePosition = {x: e.clientX, y: e.clientY};
-      let deltaX = mousePosition.x - this.lastMousePosition.x;
-      let deltaY = mousePosition.y - this.lastMousePosition.y;
+      const deltaX = mousePosition.x - this.lastMousePosition.x;
+      const deltaY = mousePosition.y - this.lastMousePosition.y;
       this.viewBoxMinX -= deltaX * this.zoom;
       this.viewBoxMinY -= deltaY * this.zoom;
       // Save last mouse position
@@ -202,7 +204,10 @@ export class PanZoomSvg extends LitElement {
   }
 
   private handleMouseUp() {
-    this.isSquareDrag = false;
+    if (this.isSquareDrag) {
+      this.isSquareDrag = false;
+      this.finishingDrag = true;
+    }
     this.isPan = false;
   }
 

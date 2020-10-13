@@ -1,2 +1,2 @@
-export { Point } from './point_interface';
+export { Point } from './point-interface';
 export { Square } from './square-interface';

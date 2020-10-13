@@ -1,6 +1,7 @@
-import {LitElement, html, customElement, property, css} from 'lit-element';
+import {LitElement, html, customElement, property, css, query} from 'lit-element';
 import './pan-zoom-svg';
 import {Square} from './interfaces/interfaces';
+import { PanZoomSvg } from './pan-zoom-svg';
 
 @customElement('shapes-in-motion-app')
 export class ShapesInMotionApp extends LitElement {
@@ -36,8 +37,8 @@ export class ShapesInMotionApp extends LitElement {
   @property({type: Number})
   measuredFps = 0;
 
-  @property({type: Array})
-  squares: Square[] = [];
+  @query('pan-zoom-svg')
+  canvas!: PanZoomSvg;
 
   private intervalId: NodeJS.Timeout | undefined = undefined;
   private sideLength = 0;
@@ -46,7 +47,9 @@ export class ShapesInMotionApp extends LitElement {
   private reqFps = 0;
   private lastT = 0;
   
-  private _distance = () => this.sideLength * 1.75;
+  private get distance() {
+    return this.sideLength * 1.75;
+  }
 
   render() {
     return html`
@@ -60,33 +63,31 @@ export class ShapesInMotionApp extends LitElement {
         <label for="req-fps">Frames per sec:</label>
         <input type="number" id="req-fps" name="req-fps" value="30" />
         <div>
-          <button @click=${this._startButton}>Start</button>
-          <button @click=${this._stopButton}>Stop</button>
+          <button @click=${this.handleStartButtonClick}>Start</button>
+          <button @click=${this.handleStopButtonClick}>Stop</button>
         </div>
         <p>Measuring: ${this.measuredFps} fps</p>
       </div>
-      <pan-zoom-svg
-        .squares=${this.squares}
-      ></pan-zoom-svg>
+      <pan-zoom-svg></pan-zoom-svg>
       </div>
     `;
   }
 
-  private _startButton() {
-    this._readInputs();
-    this._createSquares();
+  private handleStartButtonClick() {
+    this.readInputs();
+    this.createSquares();
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
     if (this.numberSpinning > 0) {
       this.intervalId = setInterval(() => {
-        this._measureFps();      
-        this._spinSquares();
+        this.measureFps();      
+        this.spinSquares();
       }, 1000 / this.reqFps);
     }      
   }
 
-  private _readInputs() {
+  private readInputs() {
     // Get sideLength
     const sideLengthInput = this.shadowRoot?.getElementById(
       'side-length'
@@ -109,16 +110,17 @@ export class ShapesInMotionApp extends LitElement {
     this.reqFps = Number(fpsInput.value);
   }
 
-  private _createSquares() {
+  private createSquares() {
     const squaresPerRow = Math.round(Math.sqrt(this.numberOfSquares));
     const squares: Square[] = [];
     for (let n = 1; n <= this.numberOfSquares; n++) {
       const row = Math.ceil(n / squaresPerRow);
       const colum = n - (row - 1) * squaresPerRow;
-      const x = this._distance() * colum;
-      const y = this._distance() * row;
+      const x = this.distance * colum;
+      const y = this.distance * row;
       const square: Square = {
-        coordinate: {x, y},
+        x,
+        y,
         sideLength: this.sideLength,
         rotation: 0,
         isHighligted: false,
@@ -126,10 +128,10 @@ export class ShapesInMotionApp extends LitElement {
       };
       squares.push(square);
     }
-    this.squares = squares;
+    this.canvas.squares = squares;
   }
 
-  private _measureFps() {
+  private measureFps() {
     // Check whether this is the first run
     if (this.lastT == 0) {
       this.lastT = performance.now();
@@ -141,8 +143,8 @@ export class ShapesInMotionApp extends LitElement {
     this.lastT = t;
   }
 
-  private _spinSquares() {
-    this.squares = this.squares.map((square, n) => {
+  private spinSquares() {
+    this.canvas.squares = this.canvas.squares.map((square, n) => {
       if (n < this.numberSpinning) {
         square = { ...square, rotation: square.rotation + 1 };
       }
@@ -150,7 +152,7 @@ export class ShapesInMotionApp extends LitElement {
     });
   }
 
-  _stopButton() {
+  handleStopButtonClick() {
     if(this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;
