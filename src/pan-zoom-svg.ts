@@ -1,6 +1,6 @@
 import { LitElement, html, customElement, property, query } from 'lit-element';
 import { Square } from './interfaces/interfaces';
-import { squareTemplate, originTemplate } from './templates';
+import { squareTemplate, originTemplate, trainTemplate } from './templates';
 
 @customElement('pan-zoom-svg')
 export class PanZoomSvg extends LitElement {
@@ -22,8 +22,18 @@ export class PanZoomSvg extends LitElement {
   @property({ type: Number })
   zoom = 1;
 
+  @property({ type: Object})
+  train = {
+    x: 0,
+    y: 0,
+    rotation: 0,
+  };
+  
   @query('svg')
   svg!: SVGAElement;
+
+  @query('#dragPath')
+  dragPath!: SVGPathElement;
 
   constructor() {
     super();
@@ -34,6 +44,12 @@ export class PanZoomSvg extends LitElement {
   firstUpdated() {
     this.setViewportSize();
     this.setViewBoxMin();
+    const dragPathStart = this.dragPath.getPointAtLength(0);
+    this.train = {
+      x: dragPathStart.x,
+      y: dragPathStart.y,
+      rotation: 0,
+    };
   }
 
   private setViewportSize() {
@@ -84,6 +100,8 @@ export class PanZoomSvg extends LitElement {
           stroke='rgb(85,160,185)'
           stroke-width='2'
         />
+        ${trainTemplate(this.train.x, this.train.y, this.train.rotation)}
+        
         ${originTemplate({ x: 0, y: 0 }, 100, 2)}
         ${this.squares.map((square) =>
           squareTemplate(
