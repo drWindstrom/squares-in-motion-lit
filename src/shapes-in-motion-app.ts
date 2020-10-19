@@ -1,7 +1,8 @@
 import {LitElement, html, customElement, property, css, query} from 'lit-element';
 import './pan-zoom-svg';
-import {Square} from './interfaces/interfaces';
 import { PanZoomSvg } from './pan-zoom-svg';
+import {Square} from './interfaces/interfaces';
+
 
 @customElement('shapes-in-motion-app')
 export class ShapesInMotionApp extends LitElement {

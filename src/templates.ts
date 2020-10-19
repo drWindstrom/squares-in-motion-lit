@@ -1,56 +1,7 @@
 import { svg } from 'lit-element';
-import {Point, Square} from './interfaces/interfaces';
-import {invertYAxis} from './utils';
+import { Point } from './interfaces/interfaces';
+import { invertYAxis } from './utils';
 
-export function squareTemplate(
-  square: Square,
-  onMouseEnter: (e: MouseEvent) => void,
-  onMouseLeave: (e: MouseEvent) => void,
-  onClick: (e: MouseEvent) => void,
-  onMouseDown: (e: MouseEvent) => void
-) {
-  // Default style
-  let strokeColor = 'black';
-  let strokeWidth = '0';
-  let cursorStyle = 'grab';
-  if (square.isHighligted && !square.isSelected) {
-    // Highlighted only
-    strokeColor = 'rgb(85,160,185)';
-    strokeWidth = '2';
-  } else if (square.isSelected && !square.isHighligted) {
-    // Selected only
-    strokeColor = 'rgb(175,35,95)';
-    strokeWidth = '2';
-  } else if (square.isSelected && square.isHighligted) {
-    // Highlighted and selected
-    strokeColor = 'rgb(175,35,95)';
-    strokeWidth = '2';
-    cursorStyle = 'move';
-  }
-
-  const center = invertYAxis({x: square.x, y: square.y});
-
-  return svg`
-      <rect 
-        x=${-square.sideLength / 2} 
-        y=${-square.sideLength / 2} 
-        width=${square.sideLength} 
-        height=${square.sideLength} 
-        rx=${square.sideLength / 10}
-        ry=${square.sideLength / 10}
-        stroke=${strokeColor}
-        stroke-width=${strokeWidth}
-        cursor=${cursorStyle}
-        transform='translate(${center.x} ${center.y}) rotate(${
-    square.rotation
-  })'
-        @mouseenter=${onMouseEnter}
-        @mouseleave=${onMouseLeave}
-        @click=${onClick}
-        @mousedown=${onMouseDown}
-      ></rect>
-    `;
-}
 
 export function originTemplate(
   origin: Point,
