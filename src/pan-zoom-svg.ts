@@ -1,10 +1,12 @@
 import { LitElement, html, customElement, property, query } from 'lit-element';
-import { Square, SquareCanvas } from './interfaces/interfaces';
-import { originTemplate, trainTemplate } from './templates';
+import { Square, SquareCanvas, TrainCanvas } from './interfaces/interfaces';
+import { originTemplate } from './templates';
 import { squareTemplate, SquareHandlers } from './square';
+import { TrainHandlers, trainTemplate } from './train';
 
 @customElement('pan-zoom-svg')
-export class PanZoomSvg extends LitElement implements SquareCanvas {
+export class PanZoomSvg extends LitElement
+  implements SquareCanvas, TrainCanvas {
   @property({ type: Array })
   squares: Square[] = [];
 
@@ -28,6 +30,8 @@ export class PanZoomSvg extends LitElement implements SquareCanvas {
     x: 0,
     y: 0,
     rotation: 0,
+    pathId: 'dragPath',
+    isSelected: false,
   };
 
   @query('svg')
@@ -37,6 +41,7 @@ export class PanZoomSvg extends LitElement implements SquareCanvas {
   dragPath!: SVGPathElement;
 
   squareHandlers = new SquareHandlers(this);
+  trainHandlers = new TrainHandlers(this);
 
   constructor() {
     super();
@@ -53,9 +58,9 @@ export class PanZoomSvg extends LitElement implements SquareCanvas {
     this.setViewBoxMin();
     const dragPathStart = this.dragPath.getPointAtLength(0);
     this.train = {
+      ...this.train,
       x: dragPathStart.x,
-      y: dragPathStart.y,
-      rotation: 0,
+      y: -dragPathStart.y,
     };
   }
 
@@ -104,7 +109,11 @@ export class PanZoomSvg extends LitElement implements SquareCanvas {
           stroke-width="2"
         />
 
-        ${trainTemplate(this.train.x, this.train.y, this.train.rotation)}
+        ${trainTemplate(
+          this.train,
+          (e) => this.trainHandlers.click(e),
+          (e) => this.trainHandlers.mouseDown(e)
+        )}
         ${originTemplate({ x: 0, y: 0 }, 100, 2)}
         ${this.squares.map((square) =>
           squareTemplate(
@@ -128,10 +137,10 @@ export class PanZoomSvg extends LitElement implements SquareCanvas {
     }
     return mousePos;
   }
-  
+
   isPan = false;
   lastMousePosition = { x: 0, y: 0 };
-  
+
   private handleMouseDown(e: MouseEvent) {
     const MIDDLE_BUTTON = 1;
     if (e.button === MIDDLE_BUTTON) {
@@ -157,7 +166,7 @@ export class PanZoomSvg extends LitElement implements SquareCanvas {
 
   private handleMouseUp() {
     if (this.isPan) {
-     this.isPan = false;
+      this.isPan = false;
     }
   }
 

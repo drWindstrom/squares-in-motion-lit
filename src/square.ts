@@ -1,15 +1,7 @@
 import { svg } from 'lit-element';
 import { invertYAxis } from './utils';
-import { SquareCanvas } from './interfaces/interfaces';
+import { SquareCanvas, Square } from './interfaces/interfaces';
 
-export interface Square {
-  x: number;
-  y: number;
-  sideLength: number;
-  rotation: number;
-  isHighligted: boolean;
-  isSelected: boolean;
-}
 
 export function squareTemplate(
   square: Square,

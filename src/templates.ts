@@ -46,26 +46,4 @@ export function originTemplate(
     `;
 }
 
-export function trainTemplate(x: number, y: number, rotation: number) {
-  return svg`
-    <g 
-      id="train" 
-      transform='translate(${x} ${y}) rotate(${rotation})'
-    >
-      <path
-        id="trainOutline"
-        d="M 20,10 H -20 V -10 H 20 l 15,10 z"
-        fill='none'
-        stroke='rgb(175,35,95)'
-        stroke-width='2'
-      />
-      <circle
-        id="trainCenter"
-        r="2.5"
-        cy="0"
-        cx="0"
-        fill='rgb(175,35,95)'
-      />
-    </g>
-  `; 
-}
+
