@@ -1,6 +1,6 @@
 import { svg } from 'lit-element';
 import { Train, TrainCanvas } from './interfaces/interfaces';
-import { invertYAxis } from './utils';
+import { invertYAxis, getVec, scalarProjection } from './utils';
 
 export function trainTemplate(
   train: Train,
@@ -44,6 +44,11 @@ export function trainTemplate(
     `;
 }
 
+enum PathDirection {
+  Up,
+  Down,
+}
+
 export class TrainHandlers {
   constructor(canvas: TrainCanvas) {
     this.canvas = canvas;
@@ -57,7 +62,12 @@ export class TrainHandlers {
   private canvas: TrainCanvas;
   private isTrainDrag = false;
   private finishingDrag = false;
-  private lastMousePosition = { x: 0, y: 0 };
+  private startDrag = { x: 0, y: 0 };
+ 
+  private get trainPath(): SVGPathElement {
+    const pathId = this.canvas.train.pathId;
+    return this.canvas.shadowRoot?.querySelector(`#${pathId}`) as SVGPathElement;
+  }
 
   click(e: MouseEvent) {
     // Prevent the click event after dragging a square
@@ -87,7 +97,7 @@ export class TrainHandlers {
     if (this.canvas.train.isSelected && e.button === MAIN_BUTTON) {
       e.stopPropagation();
       this.isTrainDrag = true;
-      this.lastMousePosition = this.canvas.clientToCanvasCoordinates(e);
+      this.startDrag = this.canvas.clientToCanvasCoordinates(e);
     }
   }
 
@@ -99,19 +109,45 @@ export class TrainHandlers {
     // this.lastUpdate = Date.now();
     // Dragging a square
     if (this.isTrainDrag) {
-      const mousePosition = this.canvas.clientToCanvasCoordinates(e);
-      const deltaX = mousePosition.x - this.lastMousePosition.x;
-      const deltaY = mousePosition.y - this.lastMousePosition.y;
+      const endDrag = this.canvas.clientToCanvasCoordinates(e);
+      const dragVector = getVec(this.startDrag, endDrag);
+      const trainOffset = this.canvas.train.offset;
+      const tagentUpVector = this.getTangentVectorAtOffset(trainOffset, PathDirection.Up);
+      //const tagentDownVector =this.getTangentVectorAtOffset(trainOffset, PathDirection.Down);
+
+      const dragMagnitudeUp = scalarProjection(dragVector, tagentUpVector);
+      //const dragMagnitudeDown = scalarProjection(dragVector, tagentDownVector);
+      
+      let dragMagnitude = dragMagnitudeUp;
+      // if (dragMagnitudeUp >= dragMagnitudeDown) {
+      //   dragMagnitude = dragMagnitudeUp;
+      // } else {
+      //   dragMagnitude = -dragMagnitudeDown;
+      // }
+      console.log(`dragMagnitude: ${dragMagnitude}`);
+      const maxPathLength = this.trainPath.getTotalLength();
+      let nextTrainOffset = trainOffset + dragMagnitude;
+      if (nextTrainOffset > maxPathLength) {
+        nextTrainOffset = maxPathLength;
+      }
+      if (nextTrainOffset < 0) {
+        nextTrainOffset = 0;
+      }
+      
+      const trainLocation = this.trainPath.getPointAtLength(nextTrainOffset);
+
       // Move train to next position
       this.canvas.train = {
         ...this.canvas.train,
-        x: this.canvas.train.x + deltaX,
-        y: this.canvas.train.y + deltaY,
+        x: trainLocation.x,
+        y: -trainLocation.y,
+        offset: nextTrainOffset,
       };
       // Save last mouse position
-      this.lastMousePosition = mousePosition;
+      this.startDrag = endDrag;
     }
   }
+  
 
   private handleMouseUp() {
     if (this.isTrainDrag) {
@@ -119,4 +155,32 @@ export class TrainHandlers {
       this.finishingDrag = true;
     }
   }
+
+  private getTangentVectorAtOffset(offset: number, direction: PathDirection) {
+    let tangentVector = {x: 0, y: 0};
+    const pointAtOffset = this.trainPath.getPointAtLength(offset);
+    
+    if (direction === PathDirection.Up) {
+      const pathLength = this.trainPath.getTotalLength();
+      let deltaOffset = offset + 1;
+      if (deltaOffset > pathLength) {
+        deltaOffset = pathLength;
+      }
+      const pointAtDeltaOffset = this.trainPath.getPointAtLength(deltaOffset);
+      tangentVector = getVec(pointAtOffset, pointAtDeltaOffset);
+    }
+
+    if (direction === PathDirection.Down) {
+      let deltaOffset = offset - 1;
+      if (deltaOffset < 0) {
+        deltaOffset = 0;
+      }
+      const pointAtDeltaOffset = this.trainPath.getPointAtLength(deltaOffset);
+      tangentVector = getVec(pointAtOffset, pointAtDeltaOffset);
+    }
+
+    return invertYAxis(tangentVector);
+  }
+
+
 }

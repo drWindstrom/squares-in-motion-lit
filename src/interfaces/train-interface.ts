@@ -1,7 +1,8 @@
 export interface Train {
     x: number;
     y: number;
-    rotation: number;
+    offset: number;
     pathId: string;
+    rotation: number;
     isSelected: boolean;
 }

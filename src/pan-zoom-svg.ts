@@ -29,8 +29,9 @@ export class PanZoomSvg extends LitElement
   train = {
     x: 0,
     y: 0,
-    rotation: 0,
+    offset: 0,
     pathId: 'dragPath',
+    rotation: 0,
     isSelected: false,
   };
 
@@ -56,7 +57,7 @@ export class PanZoomSvg extends LitElement
   firstUpdated() {
     this.setViewportSize();
     this.setViewBoxMin();
-    const dragPathStart = this.dragPath.getPointAtLength(0);
+    const dragPathStart = this.dragPath.getPointAtLength(this.train.offset);
     this.train = {
       ...this.train,
       x: dragPathStart.x,
