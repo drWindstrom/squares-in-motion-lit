@@ -30,5 +30,7 @@ export function scalarProjection(vec: Vector, direction: Vector): number {
     return Math.cos(angle) * vectorMagnitude(vec);
 }
 
-
+export function distance(p1: Point, p2: Point): number {
+    return vectorMagnitude(getVec(p1, p2));
+}
 
