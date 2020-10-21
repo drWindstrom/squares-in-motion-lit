@@ -77,11 +77,11 @@ export class PanZoomSvg extends LitElement
   }
 
   get viewboxWidth(): number {
-    return this.zoom * this.viewportWidth;
+    return this.viewportWidth / this.zoom;
   }
 
   get viewboxHeight(): number {
-    return this.zoom * this.viewportHeight;
+    return this.viewportHeight / this.zoom;
   }
 
   render() {
@@ -134,7 +134,7 @@ export class PanZoomSvg extends LitElement
     const mousePos = { x: 0, y: 0 };
     if (CTM) {
       mousePos.x = (e.clientX - CTM.e) / CTM.a;
-      mousePos.y = -(e.clientY - CTM.f) / CTM.d;
+      mousePos.y = (e.clientY - CTM.f) / CTM.d;
     }
     return mousePos;
   }
@@ -158,8 +158,8 @@ export class PanZoomSvg extends LitElement
       const mousePosition = { x: e.clientX, y: e.clientY };
       const deltaX = mousePosition.x - this.lastMousePosition.x;
       const deltaY = mousePosition.y - this.lastMousePosition.y;
-      this.viewBoxMinX -= deltaX * this.zoom;
-      this.viewBoxMinY -= deltaY * this.zoom;
+      this.viewBoxMinX -= deltaX / this.zoom;
+      this.viewBoxMinY -= deltaY / this.zoom;
       // Save last mouse position
       this.lastMousePosition = mousePosition;
     }
@@ -174,21 +174,22 @@ export class PanZoomSvg extends LitElement
   private handleWheel(e: WheelEvent) {
     e.preventDefault();
     // Before zoom
-    const xBeforeZoom = e.offsetX * this.zoom;
-    const yBeforeZoom = e.offsetY * this.zoom;
+    const xBeforeZoom = e.offsetX / this.zoom;
+    const yBeforeZoom = e.offsetY / this.zoom;
     // Update zoom
     let zoomFaktor = 1.0;
-    e.deltaY < 0 ? (zoomFaktor = 0.9) : (zoomFaktor = 1.1);
-    this.zoom /= zoomFaktor;
+    e.deltaY < 0 ? (zoomFaktor = 0.90) : (zoomFaktor = 1/0.9);
+    this.zoom *= zoomFaktor;
     // After zoom
-    const xAfterZoom = e.offsetX * this.zoom;
-    const yAfterZoom = e.offsetY * this.zoom;
+    const xAfterZoom = e.offsetX / this.zoom;
+    const yAfterZoom = e.offsetY / this.zoom;
     // Calculate shift due to zoom
     const deltaX = xBeforeZoom - xAfterZoom;
     const deltaY = yBeforeZoom - yAfterZoom;
     // Translate coordinate system to prevent shift due to zoom
     this.viewBoxMinX += deltaX;
     this.viewBoxMinY += deltaY;
+    console.log(`zoom: ${this.zoom}`);
   }
 }
 
