@@ -97,100 +97,154 @@ export class TrainHandlers {
     if (this.canvas.train.isSelected && e.button === MAIN_BUTTON) {
       e.stopPropagation();
       this.isTrainDrag = true;
-      this.dragStart = this.canvas.clientToCanvasCoordinates(e);
+      this.cursorLoc = this.canvas.clientToCanvasCoordinates(e);
     }
   }
   
-  private dragStart = {x: 0, y: 0}; 
   private lastUpdate = 0;
-  private trainPathCache!: SVGPathElement; 
+  private cachedPath!: SVGPathElement;
+  private cursorLoc: Point = { x: 0, y: 0 }; 
+  private previousCursorLoc: Point = { x: 0, y:0 };
+  private maxPathLength = 0;
+  private timeStamps: number[] = [];
 
   private handleCanvasMouseMove(e: MouseEvent) {
     // Throttle
-    if(Date.now() - this.lastUpdate < 1000/30) {
+    const now = Date.now();
+    if(now - this.lastUpdate < 1000/60) {
       return;
     }
-    
-    
+    this.lastUpdate = now;
+
+    const t1 = performance.now();    
     if (this.isTrainDrag) {
-      this.trainPathCache = this.trainPath;
-      const cursorLocation = this.canvas.clientToCanvasCoordinates(e);
+      this.cachedPath = this.trainPath;
+      this.maxPathLength = this.cachedPath.getTotalLength();
+      // Save previous cursor location
+      this.previousCursorLoc = this.cursorLoc;
+      // Get current cursor location
+      this.cursorLoc = this.canvas.clientToCanvasCoordinates(e);
       let trainOffset = this.canvas.train.offset;
       
-      let intervalWidth = 2*distance(this.dragStart, cursorLocation);
-      intervalWidth = this.fitIntervalWidth(intervalWidth, trainOffset, cursorLocation);
-      const stopIntervalWidth = 1.0 / this.canvas.zoom;
+      let intervalWidth = 2*distance(this.cursorLoc, this.previousCursorLoc);
+      intervalWidth = this.fitIntervalWidth(intervalWidth, trainOffset);
+      const stopIntervalWidth = 0.5 / this.canvas.zoom;
 
       while (intervalWidth > stopIntervalWidth) {
-        const searchDirection = this.getSearchDirection(trainOffset, cursorLocation);
+        const searchDirection = this.getSearchDirection(trainOffset);
         if (searchDirection === PathDirection.Up) {
-          trainOffset = trainOffset + intervalWidth/2;
+          trainOffset = trainOffset + 0.5*intervalWidth;
         } 
-        if (searchDirection === PathDirection.Down) {
-          trainOffset = trainOffset - intervalWidth/2;
+        else { // Search in down direction
+          trainOffset = trainOffset - 0.5*intervalWidth;
         }
         intervalWidth = 0.5 * intervalWidth;
       }
       
       // move train
-      const nextTrainLocation = this.trainPathCache.getPointAtLength(trainOffset);
+      const nextTrainLocation = this.cachedPath.getPointAtLength(trainOffset);
       this.canvas.train = {
         ...this.canvas.train,
         x: nextTrainLocation.x,
         y: -nextTrainLocation.y,
         offset: trainOffset,
       }
-      
-      this.dragStart = cursorLocation;
-      this.lastUpdate = Date.now();
+      const t2 = performance.now();
+      this.timeStamps.push(t2 - t1);
     }
   }
 
-  private getSearchDirection(offset: number, cursorLocation: Point) {
+  // private handleCanvasMouseMove(e: MouseEvent) {
+  //   // Throttle
+  //   const now = Date.now();
+  //   if(now - this.lastUpdate < 1000/60) {
+  //     return;
+  //   }
+  //   this.lastUpdate = now;
+
+  //   //const t1 = performance.now();    
+  //   if (this.isTrainDrag) {
+  //     this.cachedPath = this.trainPath;
+  //     this.maxPathLength = this.cachedPath.getTotalLength();
+  //     // Get current cursor location
+  //     this.cursorLoc = this.canvas.clientToCanvasCoordinates(e);
+  //     let trainOffset = this.canvas.train.offset;
+      
+  //     const searchDirection = this.getSearchDirection(trainOffset);
+  //     const stepSize = 0.5 / this.canvas.zoom * searchDirection;
+  //     let prevDistance = distance(this.cachedPath.getPointAtLength(trainOffset), this.cursorLoc);
+  //     let nextDistance = distance(this.cachedPath.getPointAtLength(trainOffset + stepSize), this.cursorLoc);
+  //     while (prevDistance > nextDistance) {
+  //       trainOffset = trainOffset + stepSize;
+  //       if (trainOffset > this.maxPathLength) {
+  //         trainOffset = this.maxPathLength;
+  //         break;
+  //       }
+  //       if (trainOffset < 0) {
+  //         trainOffset = 0;
+  //         break;
+  //       }
+  //       prevDistance = nextDistance;
+  //       nextDistance = distance(this.cachedPath.getPointAtLength(trainOffset + stepSize), this.cursorLoc);
+  //     }
+           
+  //     // move train
+  //     const nextTrainLocation = this.cachedPath.getPointAtLength(trainOffset);
+  //     this.canvas.train = {
+  //       ...this.canvas.train,
+  //       x: nextTrainLocation.x,
+  //       y: -nextTrainLocation.y,
+  //       offset: trainOffset,
+  //     }
+  //     //const t2 = performance.now();
+  //     //this.timeStamps.push(t2 - t1);
+  //   }
+  // }
+
+  getPerformance() {
+    let sum = 0;
+    for (const t of this.timeStamps) {
+      sum = sum + t;
+    }
+    console.log(`Performanc: ${sum/this.timeStamps.length} ms`);
+  }
+
+  private getSearchDirection(offset: number) {
     const stepSize = 1;
     
-    const maxPathLength = this.trainPathCache.getTotalLength();
     let stepUp = offset + stepSize;
-    if (stepUp > maxPathLength) { stepUp = maxPathLength; }
+    if (stepUp > this.maxPathLength) { stepUp = this.maxPathLength; }
     
     let stepDown = offset - stepSize;
     if (stepDown < 0) { stepDown = 0; }
 
-    const offsetLocationUp = this.trainPathCache.getPointAtLength(stepUp);
-    const distanceUp = distance(offsetLocationUp, cursorLocation);
-
-    const offsetLocationDown = this.trainPathCache.getPointAtLength(stepDown);
-    const distanceDown = distance(offsetLocationDown, cursorLocation);
+    const offsetLocUp = this.cachedPath.getPointAtLength(stepUp);
+    const offsetLocDown = this.cachedPath.getPointAtLength(stepDown);
+    
+    const distanceUp = distance(offsetLocUp, this.cursorLoc);
+    const distanceDown = distance(offsetLocDown, this.cursorLoc);
 
     if (distanceUp <= distanceDown) {
       return PathDirection.Up;
     }
-    else {
-      return PathDirection.Down;
-    }
+    return PathDirection.Down;
   }
 
-  private fitIntervalWidth(intervallWidth: number, offset: number, 
-    cursorLocation: Point) {
-      const maxPathLength = this.trainPathCache.getTotalLength();
-      const searchDirection = this.getSearchDirection(offset, cursorLocation);
-      
-      if (searchDirection === PathDirection.Up) {
-        if (maxPathLength < offset + intervallWidth) {
-          intervallWidth = maxPathLength - offset;
-        }
+  private fitIntervalWidth(intervallWidth: number, offset: number) {
+    const searchDirection = this.getSearchDirection(offset);
+    
+    if (searchDirection === PathDirection.Up) {
+      if (this.maxPathLength < offset + intervallWidth) {
+        intervallWidth = this.maxPathLength - offset;
       }
-
-      if (searchDirection === PathDirection.Down) {
-        if (offset - intervallWidth < 0) {
-          intervallWidth = offset;
-        }
+    }
+    else { // Search in down direction
+      if (offset - intervallWidth < 0) {
+        intervallWidth = offset;
       }
+    }
 
-      return intervallWidth;
-
-
-
+    return intervallWidth;
   }
 
   private handleMouseUp() {
