@@ -121,6 +121,8 @@ export class SquareHandlers {
   }
 
   private handleCanvasMouseMove(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
     // Throttle
     // if(Date.now() - this.lastUpdate < 1000/30) {
     //   return;

@@ -109,13 +109,16 @@ export class TrainHandlers {
   private timeStamps: number[] = [];
 
   private handleCanvasMouseMove(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
     // Throttle
     const now = Date.now();
     if(now - this.lastUpdate < 1000/60) {
       return;
     }
     this.lastUpdate = now;
-
+    e.preventDefault();
+    e.stopPropagation();
     const t1 = performance.now();    
     if (this.isTrainDrag) {
       this.cachedPath = this.trainPath;

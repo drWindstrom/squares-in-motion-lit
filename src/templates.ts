@@ -21,29 +21,33 @@ export function originTemplate(
   const invOrigin = invertYAxis(origin);
 
   return svg`
-      <marker 
-        id="arrow" 
-        viewBox="0 0 10 10" 
-        refX="5" 
-        refY="5"
-        markerWidth=${markerSize} 
-        markerHeight=${markerSize}
-        orient="auto-start-reverse">
-        <path d="M 0 0 L 10 5 L 0 10 z" />
-      </marker>
-      <path 
-        d='M ${yArrow.x} ${yArrow.y} 
-           L ${invOrigin.x} ${invOrigin.y} 
-           L ${xArrow.x} ${xArrow.y}'
-        stroke="black"
-        stroke-width=${strokeWidth}
-        fill="none"
-        marker-start="url(#arrow)"
-        marker-end="url(#arrow)"
-      />
-      <text x=${xLabel.x} y=${xLabel.y} >X</text>
-      <text x=${yLabel.x} y=${yLabel.y} >Y</text>
+        <style>
+          text { user-select: none; }
+        </style>
+        <marker 
+          id="arrow" 
+          viewBox="0 0 10 10" 
+          refX="5" 
+          refY="5"
+          markerWidth=${markerSize} 
+          markerHeight=${markerSize}
+          orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" />
+        </marker>
+        <path 
+          d='M ${yArrow.x} ${yArrow.y} 
+            L ${invOrigin.x} ${invOrigin.y} 
+            L ${xArrow.x} ${xArrow.y}'
+          stroke="black"
+          stroke-width=${strokeWidth}
+          fill="none"
+          marker-start="url(#arrow)"
+          marker-end="url(#arrow)"
+        />
+        <text x=${xLabel.x} y=${xLabel.y} >X</text>
+        <text x=${yLabel.x} y=${yLabel.y} >Y</text>
     `;
+
 }
 
 

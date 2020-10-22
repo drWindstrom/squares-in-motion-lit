@@ -154,6 +154,8 @@ export class PanZoomSvg extends LitElement
   }
 
   private handleMouseMove(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
     if (this.isPan) {
       const mousePosition = { x: e.clientX, y: e.clientY };
       const deltaX = mousePosition.x - this.lastMousePosition.x;

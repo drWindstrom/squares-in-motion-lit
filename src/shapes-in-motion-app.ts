@@ -12,6 +12,7 @@ export class ShapesInMotionApp extends LitElement {
       height: 100vh;
       display: flex;
       flex-direction: row;
+      
     }
 
     #input-parameters {
