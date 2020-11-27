@@ -67,21 +67,17 @@ export class SquareHandlers {
   private lastMousePosition = { x: 0, y: 0 };
   
   mouseEnter(changed: Square) {
-    this.canvas.squares = this.canvas.squares.map((square) => {
-      if (square === changed) {
-        square = { ...square, isHighligted: true };
-      }
-      return square;
+    const toggleHighlightSquareEvent = new CustomEvent('toggle-highlight-square', {
+      detail: { changed: changed },
     });
+    this.canvas.dispatchEvent(toggleHighlightSquareEvent);
   }
 
   mouseLeave(changed: Square) {
-    this.canvas.squares = this.canvas.squares.map((square) => {
-      if (square === changed) {
-        square = { ...square, isHighligted: false };
-      }
-      return square;
+    const toggleHighlightSquareEvent = new CustomEvent('toggle-highlight-square', {
+      detail: { changed: changed },
     });
+    this.canvas.dispatchEvent(toggleHighlightSquareEvent);
   }
 
   click(e: MouseEvent, changed: Square) {
@@ -93,12 +89,11 @@ export class SquareHandlers {
     }
     // Regular click to select the square
     e.stopPropagation();
-    this.canvas.squares = this.canvas.squares.map((square) => {
-      if (square === changed) {
-        square = { ...square, isSelected: !square.isSelected };
-      }
-      return square;
+    // Fire event
+    const toggleSelectSquareEvent = new CustomEvent('toggle-select-square', {
+      detail: { changed: changed },
     });
+    this.canvas.dispatchEvent(toggleSelectSquareEvent);
   }
 
   mouseDown(e: MouseEvent, changed: Square) {
@@ -114,9 +109,8 @@ export class SquareHandlers {
     const MAIN_BUTTON = 0;
     if (e.button === MAIN_BUTTON) {
       // Deselect all squares
-      this.canvas.squares = this.canvas.squares.map((square) => {
-        return { ...square, isSelected: false };
-      });
+      const deselectAllSquareEvent = new CustomEvent('deselect-all-squares');
+      this.canvas.dispatchEvent(deselectAllSquareEvent);
     }
   }
 
@@ -134,16 +128,10 @@ export class SquareHandlers {
       const deltaX = mousePosition.x - this.lastMousePosition.x;
       const deltaY = mousePosition.y - this.lastMousePosition.y;
       // Move slected squares to the next position
-      this.canvas.squares = this.canvas.squares.map((square) => {
-        if (square.isSelected) {
-          square = {
-            ...square,
-            x: square.x + deltaX,
-            y: square.y + deltaY,
-          };
-        }
-        return square;
+      const translateSelectedSquaresEvent = new CustomEvent('translate-selected-squares', {
+        detail: { deltaX, deltaY },
       });
+      this.canvas.dispatchEvent(translateSelectedSquaresEvent);
       // Save last mouse position
       this.lastMousePosition = mousePosition;
     }
