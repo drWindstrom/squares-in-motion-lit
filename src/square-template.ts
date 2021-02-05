@@ -2,7 +2,6 @@ import { svg } from 'lit-element';
 import { invertYAxis } from './utils';
 import { SquareCanvas, Square } from './interfaces/interfaces';
 
-
 export function squareTemplate(
   square: Square,
   onMouseEnter: (e: MouseEvent) => void,
@@ -57,26 +56,35 @@ export class SquareHandlers {
   constructor(canvas: SquareCanvas) {
     this.canvas = canvas;
     this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
-    this.canvas.addEventListener('mousemove', (e) => this.handleCanvasMouseMove(e));
+    this.canvas.addEventListener('mousemove', (e) =>
+      this.handleCanvasMouseMove(e)
+    );
     this.canvas.addEventListener('mouseup', () => this.handleMouseUp());
   }
 
   private canvas: SquareCanvas;
   private isSquareDrag = false;
   private finishingDrag = false;
+  private lastUpdate = 0;
   private lastMousePosition = { x: 0, y: 0 };
-  
+
   mouseEnter(changed: Square) {
-    const toggleHighlightSquareEvent = new CustomEvent('toggle-highlight-square', {
-      detail: { changed: changed },
-    });
+    const toggleHighlightSquareEvent = new CustomEvent(
+      'toggle-highlight-square',
+      {
+        detail: { changed: changed },
+      }
+    );
     this.canvas.dispatchEvent(toggleHighlightSquareEvent);
   }
 
   mouseLeave(changed: Square) {
-    const toggleHighlightSquareEvent = new CustomEvent('toggle-highlight-square', {
-      detail: { changed: changed },
-    });
+    const toggleHighlightSquareEvent = new CustomEvent(
+      'toggle-highlight-square',
+      {
+        detail: { changed: changed },
+      }
+    );
     this.canvas.dispatchEvent(toggleHighlightSquareEvent);
   }
 
@@ -118,19 +126,22 @@ export class SquareHandlers {
     e.preventDefault();
     e.stopPropagation();
     // Throttle
-    // if(Date.now() - this.lastUpdate < 1000/30) {
-    //   return;
-    // }
-    // this.lastUpdate = Date.now();
+    if (Date.now() - this.lastUpdate < 1000 / 60) {
+      return;
+    }
+    this.lastUpdate = Date.now();
     // Dragging a square
     if (this.isSquareDrag) {
       const mousePosition = this.canvas.clientToCanvasCoordinates(e);
       const deltaX = mousePosition.x - this.lastMousePosition.x;
       const deltaY = mousePosition.y - this.lastMousePosition.y;
       // Move slected squares to the next position
-      const translateSelectedSquaresEvent = new CustomEvent('translate-selected-squares', {
-        detail: { deltaX, deltaY },
-      });
+      const translateSelectedSquaresEvent = new CustomEvent(
+        'translate-selected-squares',
+        {
+          detail: { deltaX, deltaY },
+        }
+      );
       this.canvas.dispatchEvent(translateSelectedSquaresEvent);
       // Save last mouse position
       this.lastMousePosition = mousePosition;
@@ -143,5 +154,4 @@ export class SquareHandlers {
       this.finishingDrag = true;
     }
   }
-
 }
